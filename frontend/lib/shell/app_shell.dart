@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:frontend/screens/live_traffic_screen.dart';
-import '../screens/dashboard_screen.dart';
 import 'package:frontend/core/app_page.dart';
+import 'package:frontend/screens/analytics_screen.dart';
+import 'package:frontend/screens/dashboard_screen.dart';
+import 'package:frontend/screens/hotspots_screen.dart';
+import 'package:frontend/screens/incidents_screen.dart';
+import 'package:frontend/screens/live_traffic_screen.dart';
 import 'sidebar.dart';
 import 'top_bar.dart';
 
@@ -21,15 +23,16 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final sidebarWidth = constraints.maxWidth < 1000
-              ? constraints.maxWidth * 0.14
-              : constraints.maxWidth * 0.12;
+          final isCompact = constraints.maxWidth < 900;
+          final sidebarWidth = isCompact ? 68.0 : 230.0;
+
           return Row(
             children: [
               SizedBox(
                 width: sidebarWidth,
                 child: Sidebar(
                   currentPage: currentPage,
+                  isCompact: isCompact,
                   onPageSelected: (page) {
                     setState(() {
                       currentPage = page;
@@ -37,12 +40,10 @@ class _AppShellState extends State<AppShell> {
                   },
                 ),
               ),
-
               Expanded(
                 child: Column(
                   children: [
                     const TopBar(),
-
                     Expanded(child: _buildCurrentPage()),
                   ],
                 ),
@@ -58,18 +59,14 @@ class _AppShellState extends State<AppShell> {
     switch (currentPage) {
       case AppPage.dashboard:
         return const DashboardScreen();
-
       case AppPage.traffic:
         return const LiveTrafficScreen();
-        // return const Center(child: Text('Incidents'));
       case AppPage.incidents:
-        return const Center(child: Text('Incidents'));
-
+        return const IncidentsScreen();
       case AppPage.hotspots:
-        return const Center(child: Text('Hotspots'));
-
+        return const HotspotsScreen();
       case AppPage.analytics:
-        return const Center(child: Text('Analytics'));
+        return const AnalyticsScreen();
     }
   }
 }
