@@ -68,6 +68,7 @@ uvicorn main:app --reload --port 8000
 | `POST` | `/api/v1/traffic/tick` | Trigger an immediate simulation calculation cycle across corridors |
 | `POST` | `/api/v1/traffic/ingest` | Ingest external sensor telemetry reading from edge device |
 
+
 #### Sample Ingestion Payload (`POST /api/v1/traffic/ingest`):
 ```json
 {

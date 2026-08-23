@@ -225,21 +225,42 @@ class IncidentPanel extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
           ),
-          ElevatedButton(
+          ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accent,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
+            icon: const Icon(Icons.send_rounded, size: 14),
+            onPressed: () async {
               Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppColors.surface,
-                  content: Text('Dispatched alert for ${incident.id}'),
-                ),
+              final success = await trafficState.dispatchBackup(
+                incident.id,
+                unitName: 'Quick Response Patrol',
+                notes: 'Dispatched from dashboard incident overview',
               );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: success ? AppColors.trafficNormal : AppColors.surface,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, color: Colors.white, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Dispatched Quick Response Patrol to ${incident.location}',
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
             },
-            child: const Text('Dispatch Unit'),
+            label: const Text('Dispatch Backup Unit'),
           ),
         ],
       ),

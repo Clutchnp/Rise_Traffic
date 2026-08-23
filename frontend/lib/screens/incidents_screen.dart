@@ -192,21 +192,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                     final incident = filteredIncidents[index];
                     return _IncidentCard(
                       incident: incident,
-                      onDispatch: () async {
-                        await trafficState.dispatchBackup(
-                          incident.id,
-                          unitName: 'Emergency Patrol Unit',
-                          notes: 'Dispatched immediate backup from command central',
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: AppColors.surfaceElevated,
-                              content: Text('Dispatched backup unit to ${incident.location}'),
-                            ),
-                          );
-                        }
-                      },
+                      onDispatch: () => _showDispatchDialog(incident),
                     );
                   },
                 ),
@@ -215,6 +201,206 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showDispatchDialog(IncidentRecord incident) {
+    String selectedUnit = 'Patrol Alpha-4';
+    final notesController = TextEditingController(
+      text: 'Immediate dispatch to resolve ${incident.title.toLowerCase()} and divert traffic.',
+    );
+    bool isDispatching = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surfaceElevated,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.local_police_outlined, color: AppColors.accent, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Dispatch Unit — ${incident.id}',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Incident info pill
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: incident.severity.color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: incident.severity.color.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: incident.severity.color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                incident.title,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Location: ${incident.location} • Currently Assigned: ${incident.assignedUnit}',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  const Text(
+                    'Select Response Unit',
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: selectedUnit,
+                    dropdownColor: AppColors.surfaceElevated,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.accent),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Patrol Alpha-4', child: Text('Patrol Alpha-4 (Rapid Intercept)')),
+                      DropdownMenuItem(value: 'Quick Response Team 2', child: Text('Quick Response Team 2 (Heavy Incident)')),
+                      DropdownMenuItem(value: 'Traffic Warden Unit 09', child: Text('Traffic Warden Unit 09 (Intersection Control)')),
+                      DropdownMenuItem(value: 'Emergency Tow Unit 3', child: Text('Emergency Tow Unit 3 (Breakdown Clearance)')),
+                      DropdownMenuItem(value: 'Highway Patrol Taskforce', child: Text('Highway Patrol Taskforce (Corridor Sweeper)')),
+                    ],
+                    onChanged: (val) => setDialogState(() => selectedUnit = val ?? 'Patrol Alpha-4'),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'Dispatch Orders / Mission Notes',
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: notesController,
+                    maxLines: 2,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Enter dispatch mission directive...',
+                      hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.accent),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDispatching ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: isDispatching
+                  ? null
+                  : () async {
+                      setDialogState(() => isDispatching = true);
+                      final success = await trafficState.dispatchBackup(
+                        incident.id,
+                        unitName: selectedUnit,
+                        notes: notesController.text.trim(),
+                      );
+                      if (ctx.mounted) {
+                        Navigator.of(ctx).pop();
+                      }
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: success
+                                ? AppColors.trafficNormal.withValues(alpha: 0.9)
+                                : AppColors.surfaceElevated,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Dispatched $selectedUnit to ${incident.location}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    },
+              icon: isDispatching
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.send_rounded, size: 16),
+              label: Text(isDispatching ? 'Dispatching...' : 'Confirm & Dispatch'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -428,6 +614,32 @@ class _IncidentCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (incident.status.toLowerCase() == 'dispatched') ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.trafficNormal.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.trafficNormal.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, size: 10, color: AppColors.trafficNormal),
+                      SizedBox(width: 3),
+                      Text(
+                        'DISPATCHED',
+                        style: TextStyle(
+                          color: AppColors.trafficNormal,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               Text(
                 incident.time,
@@ -481,25 +693,49 @@ class _IncidentCard extends StatelessWidget {
                 child: Text(
                   'Assigned: ${incident.assignedUnit}',
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: incident.status.toLowerCase() == 'dispatched'
+                        ? AppColors.trafficNormal
+                        : AppColors.textSecondary,
                     fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: incident.status.toLowerCase() == 'dispatched'
+                        ? FontWeight.w600
+                        : FontWeight.w500,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
+              ElevatedButton.icon(
                 onPressed: onDispatch,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  side: const BorderSide(color: AppColors.border),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: incident.status.toLowerCase() == 'dispatched'
+                      ? AppColors.surfaceElevated
+                      : AppColors.accent,
+                  foregroundColor: incident.status.toLowerCase() == 'dispatched'
+                      ? AppColors.textPrimary
+                      : Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
+                    side: BorderSide(
+                      color: incident.status.toLowerCase() == 'dispatched'
+                          ? AppColors.border
+                          : Colors.transparent,
+                    ),
                   ),
                 ),
-                child: const Text('Dispatch Backup', style: TextStyle(fontSize: 11)),
+                icon: Icon(
+                  incident.status.toLowerCase() == 'dispatched'
+                      ? Icons.add_moderator_outlined
+                      : Icons.send_rounded,
+                  size: 13,
+                ),
+                label: Text(
+                  incident.status.toLowerCase() == 'dispatched'
+                      ? 'Dispatch Reinforcement'
+                      : 'Dispatch Backup',
+                  style: const TextStyle(fontSize: 11),
+                ),
               ),
             ],
           ),

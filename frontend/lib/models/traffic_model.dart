@@ -471,6 +471,34 @@ class HotspotDetail {
       suggestedGreenExtensionSec: (json['suggested_green_extension_sec'] as num?)?.toInt() ?? 0,
     );
   }
+
+  HotspotDetail copyWith({
+    String? cameraId,
+    String? name,
+    double? latitude,
+    double? longitude,
+    CongestionLevel? congestionLevel,
+    int? vehicleCount,
+    double? averageSpeed,
+    double? occupancy,
+    int? queueLength,
+    String? recommendation,
+    int? suggestedGreenExtensionSec,
+  }) {
+    return HotspotDetail(
+      cameraId: cameraId ?? this.cameraId,
+      name: name ?? this.name,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      congestionLevel: congestionLevel ?? this.congestionLevel,
+      vehicleCount: vehicleCount ?? this.vehicleCount,
+      averageSpeed: averageSpeed ?? this.averageSpeed,
+      occupancy: occupancy ?? this.occupancy,
+      queueLength: queueLength ?? this.queueLength,
+      recommendation: recommendation ?? this.recommendation,
+      suggestedGreenExtensionSec: suggestedGreenExtensionSec ?? this.suggestedGreenExtensionSec,
+    );
+  }
 }
 
 class SignalAdvisory {
