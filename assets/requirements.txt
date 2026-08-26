@@ -1,9 +1,0 @@
-numpy
-pandas
-matplotlib
-scikit-learn
-streamlit
-catboost
-folium
-geopy
-pytz==2024.1
