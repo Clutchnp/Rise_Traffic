@@ -8,20 +8,12 @@ from backend.models.hotspots import (
     SignalTuningResponse,
 )
 from backend.services.sim_service import traffic_service
-try:
-    from backend.signal_control.models import (
-        ApproachState,
-        IntersectionState,
-        Phase,
-    )
-    from backend.signal_control.optimizer import AdaptiveSignalOptimizer
-except ImportError:
-    from src.models import (
-        ApproachState,
-        IntersectionState,
-        Phase,
-    )
-    from src.optimizer import AdaptiveSignalOptimizer
+from src.models import (
+    ApproachState,
+    IntersectionState,
+    Phase,
+)
+from src.optimizer import AdaptiveSignalOptimizer
 
 
 class HotspotService:
