@@ -65,3 +65,19 @@ def trigger_simulation_tick():
 def ingest_telemetry(payload: IngestTelemetryRequest):
     """Receives and parses live telemetry data from physical edge computing camera sensors."""
     return traffic_service.ingest_telemetry(payload)
+
+
+@router.post("/nodes/{camera_id}/signal", response_model=CameraNodeModel, summary="Switch corridor traffic signal phase")
+def switch_corridor_signal(camera_id: str, req: SwitchSignalRequest):
+    """Directly switches traffic signal phase and timer for a specific corridor."""
+    node = traffic_service.switch_signal(camera_id, req)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Camera node '{camera_id}' not found")
+    return node
+
+
+@router.get("/surge-info", summary="Get 30-second shifting congestion surge status")
+def get_congestion_surge_info():
+    """Returns the current actively congested corridor in the 30-second rolling demo cycle."""
+    return traffic_service.get_surge_status()
+

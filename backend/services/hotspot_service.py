@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from backend.models.traffic import CongestionLevel, CameraNodeModel
+from backend.models.traffic import CongestionLevel, CameraNodeModel, SwitchSignalRequest
 from backend.models.hotspots import (
     HotspotDetailModel,
     SignalAdvisoryModel,
@@ -14,35 +14,22 @@ class HotspotService:
     def __init__(self):
         self._tuning_history: List[Dict[str, Any]] = []
 
-    def _generate_recommendation(self, node: CameraNodeModel) -> tuple[str, int]:
-        if node.congestion_level == CongestionLevel.CRITICAL:
-            rec = (
-                f"Increase green phase timing by +25s on {node.name} inbound corridor. "
-                f"Recommend activating dynamic variable message signs (VMS) for peripheral bypass."
-            )
-            ext_sec = 25
-        elif node.congestion_level == CongestionLevel.HIGH:
-            rec = (
-                f"Enable dynamic green-wave progression towards downstream artery from {node.name}. "
-                f"Disperse traffic flow at service lane merging points (+15s green phase)."
-            )
-            ext_sec = 15
-        elif node.congestion_level == CongestionLevel.MODERATE:
-            rec = (
-                f"Standard adaptive cycle active for {node.name}. "
-                f"Minor queue accumulation detected on secondary approaches (+5s adjustment)."
-            )
-            ext_sec = 5
-        else:
-            rec = f"Corridor {node.name} is free-flowing. Standard off-peak baseline signal timing maintained."
-            ext_sec = 0
-        return rec, ext_sec
-
     def get_hotspots(self) -> List[HotspotDetailModel]:
         cameras = traffic_service.get_cameras()
+        surge_info = traffic_service.get_surge_status()
         hotspots = []
+
         for cam in cameras:
-            rec_text, ext_sec = self._generate_recommendation(cam)
+            is_surging = cam.id == surge_info["current_surge_id"]
+            if is_surging:
+                rec = f"Live 30s Congestion Surge Active. Recommend {cam.green_time_sec}s priority green phase."
+            elif cam.congestion_level == CongestionLevel.CRITICAL:
+                rec = f"High queue accumulation. Standard clearance cycle active ({cam.green_time_sec}s green)."
+            elif cam.congestion_level == CongestionLevel.HIGH:
+                rec = f"Moderate corridor delay. Flow steady under adaptive control."
+            else:
+                rec = f"Corridor free-flowing. Signal cycle balanced."
+
             hotspots.append(
                 HotspotDetailModel(
                     camera_id=cam.id,
@@ -50,36 +37,35 @@ class HotspotService:
                     latitude=cam.latitude,
                     longitude=cam.longitude,
                     congestion_level=cam.congestion_level,
+                    congestion_score=cam.congestion_score,
                     vehicle_count=cam.vehicle_count,
                     average_speed=cam.average_speed,
                     occupancy=cam.occupancy,
                     queue_length=cam.queue_length,
-                    recommendation=rec_text,
-                    suggested_green_extension_sec=ext_sec,
+                    signal_phase=cam.signal_phase,
+                    green_time_sec=cam.green_time_sec,
+                    signal_mode=cam.signal_mode,
+                    is_surge_active=is_surging,
+                    recommendation=rec,
+                    suggested_green_extension_sec=cam.green_time_sec,
                 )
             )
-        # Sort bottlenecks by critical -> high -> moderate -> normal
-        level_order = {
-            CongestionLevel.CRITICAL: 0,
-            CongestionLevel.HIGH: 1,
-            CongestionLevel.MODERATE: 2,
-            CongestionLevel.NORMAL: 3,
-        }
-        hotspots.sort(key=lambda h: level_order.get(h.congestion_level, 99))
+
+        # Sort bottlenecks by congestion score descending (highest score first)
+        hotspots.sort(key=lambda h: h.congestion_score, reverse=True)
         return hotspots
 
     def get_advisory_for_camera(self, camera_id: str) -> Optional[SignalAdvisoryModel]:
         cam = traffic_service.get_camera(camera_id)
         if not cam:
             return None
-        rec_text, ext_sec = self._generate_recommendation(cam)
         return SignalAdvisoryModel(
             corridor_id=cam.id,
             corridor_name=cam.name,
             current_congestion=cam.congestion_level,
-            recommendation_title=f"Adaptive Signal Optimization Advisory: {cam.name}",
-            recommendation_text=rec_text,
-            suggested_green_extension_sec=ext_sec,
+            recommendation_title=f"Signal State Controller: {cam.name}",
+            recommendation_text=f"Phase: {cam.signal_phase} | Timer: {cam.green_time_sec}s | Mode: {cam.signal_mode}",
+            suggested_green_extension_sec=cam.green_time_sec,
             enable_vms_reroute=(cam.congestion_level == CongestionLevel.CRITICAL),
             enable_green_wave=(cam.congestion_level in [CongestionLevel.CRITICAL, CongestionLevel.HIGH]),
         )
@@ -91,14 +77,28 @@ class HotspotService:
         if not cam:
             return None
 
+        phase = req.phase or "NORTH_SOUTH_GREEN"
+        duration = req.green_extension_sec or 45
+        mode = req.mode or "MANUAL"
+
+        # Apply to live simulation service
+        traffic_service.switch_signal(
+            camera_id=camera_id,
+            req=SwitchSignalRequest(
+                phase=phase,
+                green_duration_sec=duration,
+                mode=mode,
+            ),
+        )
+
         applied_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ext = req.green_extension_sec or 20
 
         log_entry = {
             "camera_id": camera_id,
             "corridor_name": cam.name,
-            "applied_green_extension_sec": ext,
-            "enable_green_wave": req.enable_green_wave,
+            "applied_phase": phase,
+            "applied_green_extension_sec": duration,
+            "signal_mode": mode,
             "vms_message": req.vms_message,
             "override_reason": req.override_reason,
             "applied_at": applied_at,
@@ -107,10 +107,11 @@ class HotspotService:
 
         return SignalTuningResponse(
             status="success",
-            message=f"Successfully applied dynamic signal timing adjustment for {cam.name}",
+            message=f"Signal switched to {phase} ({duration}s) on {cam.name}",
             camera_id=camera_id,
             corridor_name=cam.name,
-            applied_green_extension_sec=ext,
+            applied_phase=phase,
+            applied_green_extension_sec=duration,
             applied_at=applied_at,
         )
 
@@ -119,3 +120,4 @@ class HotspotService:
 
 
 hotspot_service = HotspotService()
+

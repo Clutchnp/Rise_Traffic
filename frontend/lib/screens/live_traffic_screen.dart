@@ -546,6 +546,61 @@ class _SelectedCameraCard extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 14),
+
+          // SIGNAL SWITCHER STRIP
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.traffic, color: AppColors.trafficNormal, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Signal Phase: ${camera.signalPhase.replaceAll('_', ' ')} (${camera.greenTimeSec}s)',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.swap_horiz, size: 16),
+                label: const Text(
+                  'Switch Signal Phase',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () {
+                  final nextPhase = camera.signalPhase == 'NORTH_SOUTH_GREEN'
+                      ? 'EAST_WEST_GREEN'
+                      : 'NORTH_SOUTH_GREEN';
+                  trafficState.switchSignal(
+                    camera.id,
+                    phase: nextPhase,
+                    greenDurationSec: camera.greenTimeSec,
+                  );
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

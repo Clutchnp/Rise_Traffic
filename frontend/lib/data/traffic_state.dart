@@ -34,7 +34,7 @@ class TrafficState extends ChangeNotifier {
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _pollLiveTelemetry();
     });
   }
@@ -51,8 +51,14 @@ class TrafficState extends ChangeNotifier {
           );
         }
         _isBackendConnected = true;
-        notifyListeners();
       }
+
+      final updatedHotspots = await apiService.fetchHotspots();
+      if (updatedHotspots.isNotEmpty) {
+        _hotspots = updatedHotspots;
+      }
+
+      notifyListeners();
     } catch (_) {}
   }
 
@@ -75,7 +81,7 @@ class TrafficState extends ChangeNotifier {
         _cameras = results[0] as List<CameraNode>;
       }
       if (results[1] is List<IncidentRecord> && (results[1] as List<IncidentRecord>).isNotEmpty) {
-        _incidents = results[1] as List<IncidentRecord>;
+        _incidents = List.from(results[1] as List<IncidentRecord>);
       }
       if (results[2] is List<HotspotDetail> && (results[2] as List<HotspotDetail>).isNotEmpty) {
         _hotspots = results[2] as List<HotspotDetail>;
@@ -175,11 +181,11 @@ class TrafficState extends ChangeNotifier {
     return false;
   }
 
-  Future<bool> tuneSignal(
+  Future<bool> switchSignal(
     String cameraId, {
-    int greenExtensionSec = 25,
-    bool enableGreenWave = true,
-    String? vmsMessage,
+    required String phase,
+    int greenDurationSec = 45,
+    String mode = 'MANUAL',
   }) async {
     _tunedCameraIds.add(cameraId);
 
@@ -187,11 +193,11 @@ class TrafficState extends ChangeNotifier {
     final camIndex = _cameras.indexWhere((c) => c.id == cameraId);
     if (camIndex != -1) {
       final cam = _cameras[camIndex];
-      final newQueue = (cam.queueLength * 0.6).round();
-      final newSpeed = (cam.averageSpeed + 4.8).clamp(10.0, 60.0);
-      final newOccupancy = (cam.occupancy - 0.18).clamp(0.15, 0.99);
-      final newScore = (cam.congestionScore - 0.25).clamp(0.05, 1.0);
-      
+      final newQueue = (cam.queueLength * 0.45).round();
+      final newSpeed = (cam.averageSpeed + 6.5).clamp(12.0, 60.0);
+      final newOccupancy = (cam.occupancy - 0.22).clamp(0.12, 0.99);
+      final newScore = (cam.congestionScore - 0.30).clamp(0.05, 1.0);
+
       CongestionLevel newLevel = cam.congestionLevel;
       if (cam.congestionLevel == CongestionLevel.critical) {
         newLevel = CongestionLevel.high;
@@ -207,33 +213,53 @@ class TrafficState extends ChangeNotifier {
         occupancy: newOccupancy,
         congestionScore: newScore,
         congestionLevel: newLevel,
-        lastUpdated: 'Just now (AI Tuned)',
+        signalPhase: phase,
+        greenTimeSec: greenDurationSec,
+        signalMode: mode,
+        lastUpdated: 'Just now (Signal Switched)',
       );
     }
 
-    // Reactively optimize hotspot recommendation
+    // Reactively optimize hotspot detail
     final hotIndex = _hotspots.indexWhere((h) => h.cameraId == cameraId);
     if (hotIndex != -1) {
       final h = _hotspots[hotIndex];
       _hotspots[hotIndex] = h.copyWith(
-        recommendation: 'AI Signal Tuning Active (+${greenExtensionSec}s green phase, Green Wave Synchronized). Congestion dissipating.',
-        suggestedGreenExtensionSec: greenExtensionSec,
+        signalPhase: phase,
+        greenTimeSec: greenDurationSec,
+        signalMode: mode,
+        recommendation: 'Manual override active: $phase for ${greenDurationSec}s.',
       );
     }
 
     notifyListeners();
 
-    final success = await apiService.applySignalTuning(
+    final success = await apiService.switchSignal(
       cameraId,
-      greenExtensionSec: greenExtensionSec,
-      enableGreenWave: enableGreenWave,
-      vmsMessage: vmsMessage,
+      phase: phase,
+      greenDurationSec: greenDurationSec,
+      mode: mode,
     );
 
     if (_isBackendConnected) {
       _pollLiveTelemetry();
     }
     return success;
+  }
+
+  Future<bool> tuneSignal(
+    String cameraId, {
+    String phase = 'NORTH_SOUTH_GREEN',
+    int greenExtensionSec = 45,
+    bool enableGreenWave = true,
+    String? vmsMessage,
+  }) async {
+    return switchSignal(
+      cameraId,
+      phase: phase,
+      greenDurationSec: greenExtensionSec,
+      mode: 'MANUAL',
+    );
   }
 
   List<HotspotDetail> _generateDefaultHotspots() {
@@ -243,19 +269,24 @@ class TrafficState extends ChangeNotifier {
       latitude: c.location.latitude,
       longitude: c.location.longitude,
       congestionLevel: c.congestionLevel,
+      congestionScore: c.congestionScore,
       vehicleCount: c.vehicleCount,
       averageSpeed: c.averageSpeed,
       occupancy: c.occupancy,
       queueLength: c.queueLength,
-      recommendation: c.congestionLevel == CongestionLevel.critical
-          ? 'Increase green phase timing by +25s on ${c.name} inbound corridor.'
-          : 'Standard adaptive cycle active.',
-      suggestedGreenExtensionSec: c.congestionLevel == CongestionLevel.critical ? 25 : 0,
+      signalPhase: c.signalPhase,
+      greenTimeSec: c.greenTimeSec,
+      signalMode: c.signalMode,
+      isSurgeActive: c.isSurgeActive,
+      recommendation: c.isSurgeActive
+          ? 'Live 30s Congestion Surge Active. Prioritize green clearance phase.'
+          : 'Standard traffic flow under adaptive cycle.',
+      suggestedGreenExtensionSec: c.greenTimeSec,
     )).toList();
   }
 
   List<RawTelemetryLog> _generateDefaultLogs() {
-    return _cameras.map((c) => RawTelemetryLog(
+    return _cameras.take(6).map((c) => RawTelemetryLog(
       cameraId: c.id,
       corridorLocation: c.name,
       vehicles: c.vehicleCount,

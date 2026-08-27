@@ -65,6 +65,10 @@ class CameraNode {
   final CongestionLevel congestionLevel;
   final String lastUpdated;
   final String? description;
+  final String signalPhase;
+  final int greenTimeSec;
+  final String signalMode;
+  final bool isSurgeActive;
 
   const CameraNode({
     required this.id,
@@ -79,6 +83,10 @@ class CameraNode {
     required this.congestionLevel,
     required this.lastUpdated,
     this.description,
+    this.signalPhase = 'NORTH_SOUTH_GREEN',
+    this.greenTimeSec = 45,
+    this.signalMode = 'ADAPTIVE',
+    this.isSurgeActive = false,
   });
 
   factory CameraNode.fromJson(Map<String, dynamic> json) {
@@ -99,6 +107,10 @@ class CameraNode {
       congestionLevel: CongestionLevel.fromString(rawLevel?.toString()),
       lastUpdated: (json['last_updated'] ?? json['timestamp'] ?? 'Just now').toString(),
       description: json['description'] as String?,
+      signalPhase: (json['signal_phase'] ?? 'NORTH_SOUTH_GREEN').toString(),
+      greenTimeSec: (json['green_time_sec'] as num?)?.toInt() ?? 45,
+      signalMode: (json['signal_mode'] ?? 'ADAPTIVE').toString(),
+      isSurgeActive: json['is_surge_active'] as bool? ?? false,
     );
   }
 
@@ -116,6 +128,10 @@ class CameraNode {
     'congestion_level': congestionLevel.displayName.toLowerCase(),
     'last_updated': lastUpdated,
     'description': description,
+    'signal_phase': signalPhase,
+    'green_time_sec': greenTimeSec,
+    'signal_mode': signalMode,
+    'is_surge_active': isSurgeActive,
   };
 
   CameraNode copyWith({
@@ -131,6 +147,10 @@ class CameraNode {
     CongestionLevel? congestionLevel,
     String? lastUpdated,
     String? description,
+    String? signalPhase,
+    int? greenTimeSec,
+    String? signalMode,
+    bool? isSurgeActive,
   }) {
     return CameraNode(
       id: id ?? this.id,
@@ -145,6 +165,10 @@ class CameraNode {
       congestionLevel: congestionLevel ?? this.congestionLevel,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       description: description ?? this.description,
+      signalPhase: signalPhase ?? this.signalPhase,
+      greenTimeSec: greenTimeSec ?? this.greenTimeSec,
+      signalMode: signalMode ?? this.signalMode,
+      isSurgeActive: isSurgeActive ?? this.isSurgeActive,
     );
   }
 
@@ -435,10 +459,15 @@ class HotspotDetail {
   final double latitude;
   final double longitude;
   final CongestionLevel congestionLevel;
+  final double congestionScore;
   final int vehicleCount;
   final double averageSpeed;
   final double occupancy;
   final int queueLength;
+  final String signalPhase;
+  final int greenTimeSec;
+  final String signalMode;
+  final bool isSurgeActive;
   final String recommendation;
   final int suggestedGreenExtensionSec;
 
@@ -448,10 +477,15 @@ class HotspotDetail {
     required this.latitude,
     required this.longitude,
     required this.congestionLevel,
+    this.congestionScore = 0.0,
     required this.vehicleCount,
     required this.averageSpeed,
     required this.occupancy,
     required this.queueLength,
+    this.signalPhase = 'NORTH_SOUTH_GREEN',
+    this.greenTimeSec = 45,
+    this.signalMode = 'ADAPTIVE',
+    this.isSurgeActive = false,
     required this.recommendation,
     required this.suggestedGreenExtensionSec,
   });
@@ -463,10 +497,15 @@ class HotspotDetail {
       latitude: (json['latitude'] as num?)?.toDouble() ?? 12.9716,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 77.5946,
       congestionLevel: CongestionLevel.fromString(json['congestion_level']?.toString()),
+      congestionScore: (json['congestion_score'] as num?)?.toDouble() ?? 0.0,
       vehicleCount: (json['vehicle_count'] as num?)?.toInt() ?? 0,
       averageSpeed: (json['average_speed'] as num?)?.toDouble() ?? 0.0,
       occupancy: (json['occupancy'] as num?)?.toDouble() ?? 0.0,
       queueLength: (json['queue_length'] as num?)?.toInt() ?? 0,
+      signalPhase: (json['signal_phase'] ?? 'NORTH_SOUTH_GREEN').toString(),
+      greenTimeSec: (json['green_time_sec'] as num?)?.toInt() ?? 45,
+      signalMode: (json['signal_mode'] ?? 'ADAPTIVE').toString(),
+      isSurgeActive: json['is_surge_active'] as bool? ?? false,
       recommendation: (json['recommendation'] ?? '').toString(),
       suggestedGreenExtensionSec: (json['suggested_green_extension_sec'] as num?)?.toInt() ?? 0,
     );
@@ -478,10 +517,15 @@ class HotspotDetail {
     double? latitude,
     double? longitude,
     CongestionLevel? congestionLevel,
+    double? congestionScore,
     int? vehicleCount,
     double? averageSpeed,
     double? occupancy,
     int? queueLength,
+    String? signalPhase,
+    int? greenTimeSec,
+    String? signalMode,
+    bool? isSurgeActive,
     String? recommendation,
     int? suggestedGreenExtensionSec,
   }) {
@@ -491,10 +535,15 @@ class HotspotDetail {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       congestionLevel: congestionLevel ?? this.congestionLevel,
+      congestionScore: congestionScore ?? this.congestionScore,
       vehicleCount: vehicleCount ?? this.vehicleCount,
       averageSpeed: averageSpeed ?? this.averageSpeed,
       occupancy: occupancy ?? this.occupancy,
       queueLength: queueLength ?? this.queueLength,
+      signalPhase: signalPhase ?? this.signalPhase,
+      greenTimeSec: greenTimeSec ?? this.greenTimeSec,
+      signalMode: signalMode ?? this.signalMode,
+      isSurgeActive: isSurgeActive ?? this.isSurgeActive,
       recommendation: recommendation ?? this.recommendation,
       suggestedGreenExtensionSec: suggestedGreenExtensionSec ?? this.suggestedGreenExtensionSec,
     );

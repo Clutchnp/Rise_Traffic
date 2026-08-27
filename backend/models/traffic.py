@@ -24,6 +24,10 @@ class CameraNodeModel(BaseModel):
     congestion_level: CongestionLevel = Field(..., description="Congestion category: normal, moderate, high, critical")
     last_updated: str = Field(..., description="Formatted timestamp, e.g. 17:30:45")
     description: Optional[str] = Field(None, description="Corridor contextual description")
+    signal_phase: str = Field("NORTH_SOUTH_GREEN", description="Current traffic signal phase")
+    green_time_sec: int = Field(45, description="Active green phase timer in seconds")
+    signal_mode: str = Field("ADAPTIVE", description="Signal controller mode: ADAPTIVE or MANUAL")
+    is_surge_active: bool = Field(False, description="True if currently experiencing live 30s congestion surge")
 
 
 class TrafficSummaryModel(BaseModel):
@@ -33,6 +37,8 @@ class TrafficSummaryModel(BaseModel):
     average_speed: float
     total_vehicles: int
     cameras: List[CameraNodeModel]
+    active_surge_corridor: Optional[str] = None
+    seconds_to_next_surge: int = 30
 
 
 class RawTelemetryEntry(BaseModel):
@@ -44,6 +50,12 @@ class RawTelemetryEntry(BaseModel):
     queue: int
     timestamp: str
     status: str
+
+
+class SwitchSignalRequest(BaseModel):
+    phase: str = Field(..., description="Target signal phase: NORTH_SOUTH_GREEN, EAST_WEST_GREEN, PRIORITY_CLEARANCE, ALL_RED")
+    green_duration_sec: Optional[int] = Field(45, description="Duration in seconds for the green phase")
+    mode: Optional[str] = Field("MANUAL", description="Control mode: MANUAL or ADAPTIVE")
 
 
 class IngestTelemetryRequest(BaseModel):

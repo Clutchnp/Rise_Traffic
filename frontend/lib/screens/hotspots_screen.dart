@@ -12,9 +12,27 @@ class HotspotsScreen extends StatelessWidget {
       listenable: trafficState,
       builder: (context, _) {
         final hotspots = trafficState.hotspots;
-        final critCount = hotspots.where((h) => h.congestionLevel == CongestionLevel.critical).length;
-        final highCount = hotspots.where((h) => h.congestionLevel == CongestionLevel.high).length;
-        final modCount = hotspots.where((h) => h.congestionLevel == CongestionLevel.moderate).length;
+        final critCount = hotspots
+            .where((h) => h.congestionLevel == CongestionLevel.critical)
+            .length;
+        final highCount = hotspots
+            .where((h) => h.congestionLevel == CongestionLevel.high)
+            .length;
+        final modCount = hotspots
+            .where((h) => h.congestionLevel == CongestionLevel.moderate)
+            .length;
+
+        final double avgScore = hotspots.isNotEmpty
+            ? (hotspots.fold<double>(0.0, (sum, h) => sum + (h.congestionScore > 0 ? h.congestionScore : (h.occupancy * 0.5 + 0.3))) /
+                    hotspots.length) *
+                100
+            : 0.0;
+
+        final worst = hotspots.isNotEmpty ? hotspots.first : null;
+        final surgeHotspot = hotspots.firstWhere(
+          (h) => h.isSurgeActive,
+          orElse: () => hotspots.isNotEmpty ? hotspots.first : hotspots.first,
+        );
 
         return Container(
           color: AppColors.background,
@@ -31,7 +49,7 @@ class HotspotsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Congestion Hotspots & Bottlenecks',
+                            'Congestion Hotspots & Signal Switcher',
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 24,
@@ -40,7 +58,7 @@ class HotspotsScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'AI-detected recurring bottlenecks with adaptive signal optimization recommendations',
+                            'ML-classified congestion bottlenecks with direct signal phase switching and live 30s load simulation',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -50,41 +68,34 @@ class HotspotsScreen extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
-                        color: (trafficState.isBackendConnected
-                                ? AppColors.trafficNormal
-                                : AppColors.accent)
-                            .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
+                        color: AppColors.trafficNormal.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: (trafficState.isBackendConnected
-                                  ? AppColors.trafficNormal
-                                  : AppColors.accent)
-                              .withValues(alpha: 0.3),
+                          color: AppColors.trafficNormal.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: trafficState.isBackendConnected
-                                  ? AppColors.trafficNormal
-                                  : AppColors.accent,
+                              color: AppColors.trafficNormal,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            trafficState.isBackendConnected ? 'Backend Connected' : 'Adaptive Engine Active',
+                          const SizedBox(width: 8),
+                          const Text(
+                            'ML Engine Live',
                             style: TextStyle(
-                              color: trafficState.isBackendConnected
-                                  ? AppColors.trafficNormal
-                                  : AppColors.accent,
-                              fontSize: 11,
+                              color: AppColors.trafficNormal,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -93,13 +104,71 @@ class HotspotsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 18),
+
+                // 30-SECOND SHIFTING CONGESTION LIVE BANNER
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.trafficCritical.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.trafficCritical.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.bolt,
+                        color: AppColors.trafficCritical,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'LIVE 30s SHIFTING CONGESTION DEMO: Peak volume active on ${surgeHotspot.name}. Shifts dynamically every 30 seconds.',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.trafficCritical,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'CYCLIC DEMO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 20),
 
-                // SUMMARY METRIC STRIP
+                // SUMMARY METRICS STRIP
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final columns = constraints.maxWidth >= 900 ? 4 : (constraints.maxWidth >= 600 ? 2 : 1);
-                    final cardWidth = (constraints.maxWidth - (columns - 1) * 12) / columns;
+                    final columns = constraints.maxWidth >= 900
+                        ? 4
+                        : (constraints.maxWidth >= 600 ? 2 : 1);
+                    final cardWidth =
+                        (constraints.maxWidth - (columns - 1) * 12) / columns;
                     return Wrap(
                       spacing: 12,
                       runSpacing: 12,
@@ -107,10 +176,10 @@ class HotspotsScreen extends StatelessWidget {
                         SizedBox(
                           width: cardWidth,
                           child: _MetricCard(
-                            label: 'TOTAL HOTSPOTS',
+                            label: 'MONITORED BOTTLENECKS',
                             value: '${hotspots.length}',
                             color: AppColors.accent,
-                            icon: Icons.location_on_outlined,
+                            icon: Icons.traffic,
                           ),
                         ),
                         SizedBox(
@@ -125,19 +194,19 @@ class HotspotsScreen extends StatelessWidget {
                         SizedBox(
                           width: cardWidth,
                           child: _MetricCard(
-                            label: 'HIGH CONGESTION',
-                            value: '$highCount',
-                            color: AppColors.trafficHigh,
-                            icon: Icons.traffic_outlined,
+                            label: 'AVG CONGESTION SCORE',
+                            value: '${avgScore.toStringAsFixed(0)} / 100',
+                            color: AppColors.trafficModerate,
+                            icon: Icons.speed,
                           ),
                         ),
                         SizedBox(
                           width: cardWidth,
                           child: _MetricCard(
-                            label: 'MODERATE LOAD',
-                            value: '$modCount',
-                            color: AppColors.trafficModerate,
-                            icon: Icons.speed_outlined,
+                            label: 'WORST BOTTLENECK',
+                            value: worst != null ? worst.name.split(' ').first : 'N/A',
+                            color: AppColors.trafficHigh,
+                            icon: Icons.priority_high,
                           ),
                         ),
                       ],
@@ -145,6 +214,16 @@ class HotspotsScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 24),
+
+                const Text(
+                  'Ranked Bottlenecks & Signal Controllers',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 14),
 
                 // HOTSPOT CARDS
                 if (hotspots.isEmpty)
@@ -165,7 +244,10 @@ class HotspotsScreen extends StatelessWidget {
                     separatorBuilder: (_, _) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final node = hotspots[index];
-                      return _HotspotDetailCard(node: node);
+                      return _HotspotDetailCard(
+                        rank: index + 1,
+                        node: node,
+                      );
                     },
                   ),
               ],
@@ -226,7 +308,7 @@ class _MetricCard extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -239,25 +321,50 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _HotspotDetailCard extends StatefulWidget {
+  final int rank;
   final HotspotDetail node;
 
-  const _HotspotDetailCard({required this.node});
+  const _HotspotDetailCard({
+    required this.rank,
+    required this.node,
+  });
 
   @override
   State<_HotspotDetailCard> createState() => _HotspotDetailCardState();
 }
 
 class _HotspotDetailCardState extends State<_HotspotDetailCard> {
-  bool _isApplying = false;
+  bool _isSwitching = false;
 
-  void _openTuningDialog() {
-    int greenExtension = widget.node.suggestedGreenExtensionSec > 0
-        ? widget.node.suggestedGreenExtensionSec
-        : 25;
-    bool enableGreenWave = true;
-    final vmsController = TextEditingController(
-      text: 'Heavy congestion on ${widget.node.name}. Green wave route priority active.',
+  Future<void> _handleSignalSwitch(String phase, int duration) async {
+    setState(() => _isSwitching = true);
+    final success = await trafficState.switchSignal(
+      widget.node.cameraId,
+      phase: phase,
+      greenDurationSec: duration,
+      mode: 'MANUAL',
     );
+    if (mounted) {
+      setState(() => _isSwitching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: success ? AppColors.surfaceElevated : AppColors.trafficCritical,
+          content: Text(
+            success
+                ? 'Signal on ${widget.node.name} switched to $phase (${duration}s)'
+                : 'Failed to switch signal on ${widget.node.name}',
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _openCustomSwitchDialog() {
+    String selectedPhase = widget.node.signalPhase;
+    int duration = widget.node.greenTimeSec;
 
     showDialog(
       context: context,
@@ -270,11 +377,11 @@ class _HotspotDetailCardState extends State<_HotspotDetailCard> {
           ),
           title: Row(
             children: [
-              const Icon(Icons.tune, color: AppColors.accent, size: 20),
+              const Icon(Icons.traffic, color: AppColors.accent, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Signal Tuning — ${widget.node.name}',
+                  'Signal Switcher — ${widget.node.name}',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
@@ -285,217 +392,101 @@ class _HotspotDetailCardState extends State<_HotspotDetailCard> {
             ],
           ),
           content: SizedBox(
-            width: 440,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // AI Suggestion Banner
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Target Signal Phase:',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _PhaseChoiceChip(
+                      label: 'North-South Green',
+                      phaseKey: 'NORTH_SOUTH_GREEN',
+                      selected: selectedPhase == 'NORTH_SOUTH_GREEN',
+                      onSelected: () => setDialogState(() => selectedPhase = 'NORTH_SOUTH_GREEN'),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.auto_awesome, size: 16, color: AppColors.accent),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'AI OPTIMIZATION ADVISORY',
-                                style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.node.recommendation,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    _PhaseChoiceChip(
+                      label: 'East-West Green',
+                      phaseKey: 'EAST_WEST_GREEN',
+                      selected: selectedPhase == 'EAST_WEST_GREEN',
+                      onSelected: () => setDialogState(() => selectedPhase = 'EAST_WEST_GREEN'),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Green Phase Extension Slider
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Green Phase Extension',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.accent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '+${greenExtension}s',
-                          style: const TextStyle(
-                            color: AppColors.accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  SliderTheme(
-                    data: SliderTheme.of(ctx).copyWith(
-                      activeTrackColor: AppColors.accent,
-                      inactiveTrackColor: AppColors.border,
-                      thumbColor: AppColors.accent,
+                    _PhaseChoiceChip(
+                      label: 'Priority Clearance',
+                      phaseKey: 'PRIORITY_CLEARANCE',
+                      selected: selectedPhase == 'PRIORITY_CLEARANCE',
+                      onSelected: () => setDialogState(() => selectedPhase = 'PRIORITY_CLEARANCE'),
                     ),
-                    child: Slider(
-                      min: 5,
-                      max: 60,
-                      divisions: 11,
-                      value: greenExtension.toDouble(),
-                      onChanged: (v) => setDialogState(() => greenExtension = v.round()),
+                    _PhaseChoiceChip(
+                      label: 'All-Red Emergency',
+                      phaseKey: 'ALL_RED_EMERGENCY',
+                      selected: selectedPhase == 'ALL_RED_EMERGENCY',
+                      onSelected: () => setDialogState(() => selectedPhase = 'ALL_RED_EMERGENCY'),
                     ),
-                  ),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('5s (Minor)', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                      Text('60s (Heavy Surge)', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Green Wave Switch
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Enable Green Wave Corridor Sync',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            'Synchronize downstream junction offsets',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: enableGreenWave,
-                        activeColor: AppColors.accent,
-                        onChanged: (val) => setDialogState(() => enableGreenWave = val),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // VMS Advisory Broadcast
-                  const Text(
-                    'Variable Message Sign (VMS) Broadcast',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: vmsController,
-                    maxLines: 2,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Display message for electronic corridor signs...',
-                      hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.accent),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Green Phase Timer:',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    Text(
+                      '${duration}s',
+                      style: const TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: duration.toDouble(),
+                  min: 15,
+                  max: 90,
+                  divisions: 15,
+                  activeColor: AppColors.accent,
+                  inactiveColor: AppColors.border,
+                  label: '${duration}s',
+                  onChanged: (val) => setDialogState(() => duration = val.round()),
+                ),
+              ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
             ),
-            ElevatedButton.icon(
+            ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                setState(() => _isApplying = true);
-
-                final success = await trafficState.tuneSignal(
-                  widget.node.cameraId,
-                  greenExtensionSec: greenExtension,
-                  enableGreenWave: enableGreenWave,
-                  vmsMessage: vmsController.text.trim(),
-                );
-
-                if (mounted) {
-                  setState(() => _isApplying = false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: success ? AppColors.trafficNormal : AppColors.surfaceElevated,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Applied +${greenExtension}s green phase with Green Wave to ${widget.node.name}',
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+              onPressed: () {
+                Navigator.pop(ctx);
+                _handleSignalSwitch(selectedPhase, duration);
               },
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Apply Tuning'),
+              child: const Text('Apply Signal Switch'),
             ),
           ],
         ),
@@ -506,248 +497,265 @@ class _HotspotDetailCardState extends State<_HotspotDetailCard> {
   @override
   Widget build(BuildContext context) {
     final node = widget.node;
-    final isTuned = trafficState.isCameraTuned(node.cameraId);
+    final int scoreInt = (node.congestionScore > 0
+            ? (node.congestionScore * 100).round()
+            : (node.occupancy * 70 + 20).round())
+        .clamp(5, 100);
+
+    final isSurging = node.isSurgeActive;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isTuned
-              ? AppColors.trafficNormal.withValues(alpha: 0.5)
+          color: isSurging
+              ? AppColors.trafficCritical
               : AppColors.border,
-          width: isTuned ? 1.5 : 1,
+          width: isSurging ? 1.5 : 1.0,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TITLE ROW
+          // TOP ROW: RANK, NAME, SEVERITY BADGE, SURGE INDICATOR
           Row(
             children: [
               Container(
-                width: 12,
-                height: 12,
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isTuned ? AppColors.trafficNormal : node.congestionLevel.color,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isTuned ? AppColors.trafficNormal : node.congestionLevel.color)
-                          .withValues(alpha: 0.6),
-                      blurRadius: 6,
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '#${widget.rank}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            node.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (isSurging) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.trafficCritical,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '⚡ 30s SURGE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      node.cameraId,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  node.name,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (isTuned) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.trafficNormal.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle, color: AppColors.trafficNormal, size: 12),
-                      SizedBox(width: 4),
-                      Text(
-                        'AI TUNED',
-                        style: TextStyle(
-                          color: AppColors.trafficNormal,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (isTuned ? AppColors.trafficNormal : node.congestionLevel.color)
-                      .withValues(alpha: 0.12),
+                  color: node.congestionLevel.color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: (isTuned ? AppColors.trafficNormal : node.congestionLevel.color)
-                        .withValues(alpha: 0.3),
-                  ),
                 ),
                 child: Text(
-                  isTuned
-                      ? 'ADAPTIVE CLEARANCE'
-                      : '${node.congestionLevel.displayName.toUpperCase()} BOTTLENECK',
+                  node.congestionLevel.displayName.toUpperCase(),
                   style: TextStyle(
-                    color: isTuned ? AppColors.trafficNormal : node.congestionLevel.color,
+                    color: node.congestionLevel.color,
                     fontSize: 10,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // CONGESTION SCORE BAR
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$scoreInt',
+                style: TextStyle(
+                  color: node.congestionLevel.color,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 2),
+                child: Text(
+                  '/ 100 Score',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Queue: ${node.queueLength} vehicles',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (scoreInt / 100).clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: AppColors.background,
+              valueColor: AlwaysStoppedAnimation<Color>(node.congestionLevel.color),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // TELEMETRY STATS GRID
+          Row(
+            children: [
+              Expanded(
+                child: _DataPill(
+                  label: 'VEHICLE COUNT',
+                  value: '${node.vehicleCount} veh',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _DataPill(
+                  label: 'AVG SPEED',
+                  value: '${node.averageSpeed.toStringAsFixed(1)} km/h',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _DataPill(
+                  label: 'LANE OCCUPANCY',
+                  value: '${(node.occupancy * 100).toStringAsFixed(0)}%',
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // STATS GRID
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 700 ? 4 : 2;
-              return GridView.count(
-                crossAxisCount: columns,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: columns == 4 ? 2.8 : 2.4,
-                children: [
-                  _StatBox(label: 'VEHICLE COUNT', value: '${node.vehicleCount}'),
-                  _StatBox(label: 'AVG SPEED', value: '${node.averageSpeed.toStringAsFixed(1)} km/h'),
-                  _StatBox(label: 'LANE OCCUPANCY', value: '${(node.occupancy * 100).toInt()}%'),
-                  _StatBox(label: 'QUEUE LENGTH', value: '${node.queueLength} veh'),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 16),
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 14),
 
-          // AI SUGGESTION BOX
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isTuned
-                    ? AppColors.trafficNormal.withValues(alpha: 0.3)
-                    : AppColors.accent.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          // SIGNAL SWITCHER CONTROL BAR
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
                   children: [
-                    Icon(
-                      Icons.auto_awesome,
-                      size: 14,
-                      color: isTuned ? AppColors.trafficNormal : AppColors.accent,
+                    const Icon(
+                      Icons.traffic,
+                      color: AppColors.trafficNormal,
+                      size: 16,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'AI TRAFFIC OPTIMIZATION ADVISORY',
-                      style: TextStyle(
-                        color: isTuned ? AppColors.trafficNormal : AppColors.accent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                      '${node.signalPhase.replaceAll('_', ' ')} (${node.greenTimeSec}s)',
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                    const Spacer(),
-                    if (node.suggestedGreenExtensionSec > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: (isTuned ? AppColors.trafficNormal : AppColors.accent)
-                              .withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          isTuned
-                              ? '+${node.suggestedGreenExtensionSec}s Active'
-                              : 'Suggested +${node.suggestedGreenExtensionSec}s',
-                          style: TextStyle(
-                            color: isTuned ? AppColors.trafficNormal : AppColors.accent,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  node.recommendation,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _FeatureChip(
-                      icon: Icons.timer_outlined,
-                      label: node.suggestedGreenExtensionSec > 0
-                          ? '+${node.suggestedGreenExtensionSec}s Green Phase'
-                          : 'Adaptive Phase',
-                      color: AppColors.accent,
-                    ),
-                    const _FeatureChip(
-                      icon: Icons.waves_outlined,
-                      label: 'Green Wave Sync',
-                      color: AppColors.trafficNormal,
-                    ),
-                    const _FeatureChip(
-                      icon: Icons.campaign_outlined,
-                      label: 'VMS Advisory',
-                      color: AppColors.trafficModerate,
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isApplying ? null : _openTuningDialog,
-                    icon: _isApplying
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Icon(
-                            isTuned ? Icons.refresh : Icons.tune,
-                            size: 15,
-                          ),
-                    label: Text(
-                      _isApplying
-                          ? 'Applying Tuning...'
-                          : isTuned
-                              ? 'Re-tune Signal Timing'
-                              : 'Apply AI Signal Tuning',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isTuned ? AppColors.trafficNormal : AppColors.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
+              ),
+              const Spacer(),
+              if (_isSwitching)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                )
+              else ...[
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    side: const BorderSide(color: AppColors.accent),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
+                  icon: const Icon(Icons.swap_horiz, size: 16, color: AppColors.accent),
+                  label: const Text(
+                    'Quick Switch Phase',
+                    style: TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                  onPressed: () {
+                    final nextPhase = node.signalPhase == 'NORTH_SOUTH_GREEN'
+                        ? 'EAST_WEST_GREEN'
+                        : 'NORTH_SOUTH_GREEN';
+                    _handleSignalSwitch(nextPhase, node.greenTimeSec);
+                  },
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.tune, size: 16),
+                  label: const Text(
+                    'Signal Switcher',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                  onPressed: _openCustomSwitchDialog,
                 ),
               ],
-            ),
+            ],
           ),
         ],
       ),
@@ -755,63 +763,58 @@ class _HotspotDetailCardState extends State<_HotspotDetailCard> {
   }
 }
 
-class _FeatureChip extends StatelessWidget {
-  final IconData icon;
+class _PhaseChoiceChip extends StatelessWidget {
   final String label;
-  final Color color;
+  final String phaseKey;
+  final bool selected;
+  final VoidCallback onSelected;
 
-  const _FeatureChip({
-    required this.icon,
+  const _PhaseChoiceChip({
     required this.label,
-    required this.color,
+    required this.phaseKey,
+    required this.selected,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      selectedColor: AppColors.accent.withValues(alpha: 0.2),
+      backgroundColor: AppColors.surface,
+      labelStyle: TextStyle(
+        color: selected ? AppColors.accent : AppColors.textSecondary,
+        fontSize: 11,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: selected ? AppColors.accent : AppColors.border,
+        ),
       ),
     );
   }
 }
 
-class _StatBox extends StatelessWidget {
+class _DataPill extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatBox({required this.label, required this.value});
+  const _DataPill({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             label,
@@ -821,12 +824,12 @@ class _StatBox extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
           Text(
             value,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),

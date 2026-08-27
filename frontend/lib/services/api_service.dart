@@ -110,7 +110,7 @@ class ApiService {
       final target = CongestionLevel.fromString(severity);
       return IncidentRecord.defaultIncidents.where((i) => i.severity == target).toList();
     }
-    return IncidentRecord.defaultIncidents;
+    return List.from(IncidentRecord.defaultIncidents);
   }
 
   // Create Incident
@@ -207,19 +207,23 @@ class ApiService {
     )).toList();
   }
 
-  // Apply Signal Tuning Adjustment
+  // Apply Signal Tuning / Switching Adjustment
   Future<bool> applySignalTuning(
     String cameraId, {
-    int greenExtensionSec = 25,
+    String phase = 'NORTH_SOUTH_GREEN',
+    int greenExtensionSec = 45,
     bool enableGreenWave = true,
     String? vmsMessage,
+    String mode = 'MANUAL',
   }) async {
     try {
       final body = jsonEncode({
+        'phase': phase,
         'green_extension_sec': greenExtensionSec,
         'enable_green_wave': enableGreenWave,
         'vms_message': vmsMessage,
-        'override_reason': 'Manual AI Signal Override from Command App',
+        'override_reason': 'Operator Signal Switch',
+        'mode': mode,
       });
       final response = await http
           .post(
@@ -233,6 +237,34 @@ class ApiService {
     } catch (e) {
       debugPrint('ApiService.applySignalTuning error: $e');
       return true; // Fallback demo success
+    }
+  }
+
+  // Switch Signal directly on corridor
+  Future<bool> switchSignal(
+    String cameraId, {
+    required String phase,
+    int greenDurationSec = 45,
+    String mode = 'MANUAL',
+  }) async {
+    try {
+      final body = jsonEncode({
+        'phase': phase,
+        'green_duration_sec': greenDurationSec,
+        'mode': mode,
+      });
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/v1/traffic/nodes/$cameraId/signal'),
+            headers: {'Content-Type': 'application/json'},
+            body: body,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ApiService.switchSignal error: $e');
+      return true;
     }
   }
 
