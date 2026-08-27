@@ -5,7 +5,7 @@ import 'package:frontend/models/traffic_model.dart';
 import '../models/insights_model.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
+  static const String defaultBaseUrl = 'http://127.0.0.1:8000';
   final String baseUrl;
 
   ApiService({this.baseUrl = defaultBaseUrl});
@@ -340,9 +340,10 @@ class ApiService {
       CorridorThroughput(corridor: 'Hebbal Flyover Corridor', volume: '23,750 veh', status: 'Optimal Flow', congestionLevel: 'normal', averageSpeedKmh: 38.2),
     ];
   }
-}
-Future<InsightsResponse> fetchDatasetInsights() async {
-    final response = await http.get(Uri.parse('$baseUrl/analytics/insights'));
+
+  // Fetch Dataset Insights
+  Future<InsightsResponse> fetchDatasetInsights() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/v1/analytics/insights'));
 
     if (response.statusCode == 200) {
       return InsightsResponse.fromJson(json.decode(response.body));
@@ -351,5 +352,6 @@ Future<InsightsResponse> fetchDatasetInsights() async {
     }
   }
 }
+
 // Global shared instance
 final apiService = ApiService();
