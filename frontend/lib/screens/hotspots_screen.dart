@@ -15,12 +15,6 @@ class HotspotsScreen extends StatelessWidget {
         final critCount = hotspots
             .where((h) => h.congestionLevel == CongestionLevel.critical)
             .length;
-        final highCount = hotspots
-            .where((h) => h.congestionLevel == CongestionLevel.high)
-            .length;
-        final modCount = hotspots
-            .where((h) => h.congestionLevel == CongestionLevel.moderate)
-            .length;
 
         final double avgScore = hotspots.isNotEmpty
             ? (hotspots.fold<double>(0.0, (sum, h) => sum + (h.congestionScore > 0 ? h.congestionScore : (h.occupancy * 0.5 + 0.3))) /
@@ -49,7 +43,7 @@ class HotspotsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Congestion Hotspots & Signal Switcher',
+                            'Congestion Hotspots & Signal Control',
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 24,
@@ -58,7 +52,7 @@ class HotspotsScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'ML-classified congestion bottlenecks with direct signal phase switching and live 30s load simulation',
+                            'Real-time bottleneck classification, direct signal phase switching, and dynamic corridor balancing',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
@@ -92,7 +86,7 @@ class HotspotsScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           const Text(
-                            'ML Engine Live',
+                            'Adaptive Control Active',
                             style: TextStyle(
                               color: AppColors.trafficNormal,
                               fontSize: 12,
@@ -122,18 +116,18 @@ class HotspotsScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       const Icon(
-                        Icons.bolt,
+                        Icons.sync_alt,
                         color: AppColors.trafficCritical,
-                        size: 22,
+                        size: 20,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'LIVE 30s SHIFTING CONGESTION DEMO: Peak volume active on ${surgeHotspot.name}. Shifts dynamically every 30 seconds.',
+                          'Dynamic Load Simulation: Peak volume currently on ${surgeHotspot.name}. Rotates across corridors every 30 seconds.',
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -147,12 +141,12 @@ class HotspotsScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'CYCLIC DEMO',
+                          '30s CYCLE',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
                           ),
                         ),
                       ),

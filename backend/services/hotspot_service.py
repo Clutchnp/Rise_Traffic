@@ -8,11 +8,26 @@ from backend.models.hotspots import (
     SignalTuningResponse,
 )
 from backend.services.sim_service import traffic_service
+try:
+    from backend.signal_control.models import (
+        ApproachState,
+        IntersectionState,
+        Phase,
+    )
+    from backend.signal_control.optimizer import AdaptiveSignalOptimizer
+except ImportError:
+    from src.models import (
+        ApproachState,
+        IntersectionState,
+        Phase,
+    )
+    from src.optimizer import AdaptiveSignalOptimizer
 
 
 class HotspotService:
     def __init__(self):
         self._tuning_history: List[Dict[str, Any]] = []
+        self.optimizer = AdaptiveSignalOptimizer()
 
     def get_hotspots(self) -> List[HotspotDetailModel]:
         cameras = traffic_service.get_cameras()
@@ -56,18 +71,89 @@ class HotspotService:
         return hotspots
 
     def get_advisory_for_camera(self, camera_id: str) -> Optional[SignalAdvisoryModel]:
+
         cam = traffic_service.get_camera(camera_id)
+
         if not cam:
             return None
+
+        # Convert current camera data into optimizer input.
+        # Your current telemetry does not contain directional
+        # North/South/East/West values, so we split the queue
+        # between the two phases for now.
+
+        ns_queue = cam.queue_length * 0.6
+        ew_queue = cam.queue_length * 0.4
+
+        ns_arrival = max(0.1, cam.vehicle_count * 0.01 * 0.6)
+        ew_arrival = max(0.1, cam.vehicle_count * 0.01 * 0.4)
+
+        state = IntersectionState(
+            intersection_id=cam.id,
+            north=ApproachState(
+                name="north",
+                queue=ns_queue / 2,
+                arrival_rate=ns_arrival / 2,
+                saturation_flow=1.5,
+                speed_kph=cam.average_speed,
+            ),
+            south=ApproachState(
+                name="south",
+                queue=ns_queue / 2,
+                arrival_rate=ns_arrival / 2,
+                saturation_flow=1.5,
+                speed_kph=cam.average_speed,
+            ),
+            east=ApproachState(
+                name="east",
+                queue=ew_queue / 2,
+                arrival_rate=ew_arrival / 2,
+                saturation_flow=1.5,
+                speed_kph=cam.average_speed,
+            ),
+            west=ApproachState(
+                name="west",
+                queue=ew_queue / 2,
+                arrival_rate=ew_arrival / 2,
+                saturation_flow=1.5,
+                speed_kph=cam.average_speed,
+            ),
+            current_phase=(
+                Phase.NORTH_SOUTH
+                if "NORTH_SOUTH" in cam.signal_phase
+                else Phase.EAST_WEST
+            ),
+            prediction_horizon=15.0,
+        )
+
+        # Run the actual adaptive signal optimizer
+        plan = self.optimizer.optimize(state)
+
+        ns_green = plan.green_for(Phase.NORTH_SOUTH)
+        ew_green = plan.green_for(Phase.EAST_WEST)
+
+        current_green = ns_green if "NORTH_SOUTH" in cam.signal_phase else ew_green
+
         return SignalAdvisoryModel(
             corridor_id=cam.id,
             corridor_name=cam.name,
             current_congestion=cam.congestion_level,
-            recommendation_title=f"Signal State Controller: {cam.name}",
-            recommendation_text=f"Phase: {cam.signal_phase} | Timer: {cam.green_time_sec}s | Mode: {cam.signal_mode}",
-            suggested_green_extension_sec=cam.green_time_sec,
+            recommendation_title="Adaptive Signal Optimization",
+            recommendation_text=(
+                f"{plan.explanation} "
+                f"Recommended timing: "
+                f"North/South={ns_green}s, "
+                f"East/West={ew_green}s."
+            ),
+            suggested_green_extension_sec=current_green,
             enable_vms_reroute=(cam.congestion_level == CongestionLevel.CRITICAL),
-            enable_green_wave=(cam.congestion_level in [CongestionLevel.CRITICAL, CongestionLevel.HIGH]),
+            enable_green_wave=(
+                cam.congestion_level
+                in [
+                    CongestionLevel.CRITICAL,
+                    CongestionLevel.HIGH,
+                ]
+            ),
         )
 
     def apply_signal_tuning(
@@ -120,4 +206,3 @@ class HotspotService:
 
 
 hotspot_service = HotspotService()
-

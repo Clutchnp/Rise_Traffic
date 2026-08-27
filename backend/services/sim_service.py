@@ -89,6 +89,7 @@ class TrafficSimulationService:
                 "green_time_sec": 45,
                 "signal_mode": "ADAPTIVE",
                 "manual_clearance_bonus": 0.0,
+                "last_phase_switch": time.time(),
             }
             for c in DEFAULT_CORRIDORS
         }
@@ -119,19 +120,38 @@ class TrafficSimulationService:
 
     def _compute_node(self, corridor: Dict[str, Any]) -> CameraNodeModel:
         now = datetime.now()
+        cur_time = time.time()
         cam_id = corridor["camera_id"]
         base_traffic = corridor.get("base_traffic", 100)
         is_online = corridor.get("is_online", True)
 
-        signal_info = self._signal_states.get(
+        signal_info = self._signal_states.setdefault(
             cam_id,
             {
                 "signal_phase": "NORTH_SOUTH_GREEN",
                 "green_time_sec": 45,
                 "signal_mode": "ADAPTIVE",
                 "manual_clearance_bonus": 0.0,
+                "last_phase_switch": cur_time,
             },
         )
+
+        # Automatic Signal Switching logic in ADAPTIVE mode
+        phase_elapsed = cur_time - signal_info.get("last_phase_switch", cur_time)
+        green_duration = signal_info.get("green_time_sec", 45)
+
+        if signal_info.get("signal_mode", "ADAPTIVE") == "ADAPTIVE":
+            if phase_elapsed >= green_duration:
+                # Automatically alternate phase
+                current_phase = signal_info.get("signal_phase", "NORTH_SOUTH_GREEN")
+                new_phase = "EAST_WEST_GREEN" if current_phase == "NORTH_SOUTH_GREEN" else "NORTH_SOUTH_GREEN"
+                signal_info["signal_phase"] = new_phase
+                signal_info["last_phase_switch"] = cur_time
+        elif signal_info.get("signal_mode") == "MANUAL":
+            # Return to ADAPTIVE mode once manual green duration completes
+            if phase_elapsed >= green_duration:
+                signal_info["signal_mode"] = "ADAPTIVE"
+                signal_info["last_phase_switch"] = cur_time
 
         if not is_online:
             return CameraNodeModel(
@@ -285,6 +305,7 @@ class TrafficSimulationService:
         state["green_time_sec"] = req.green_duration_sec or 45
         state["signal_mode"] = req.mode or "MANUAL"
         state["manual_clearance_bonus"] = 1.0  # Immediate queue clearance bonus
+        state["last_phase_switch"] = time.time()
 
         # Recompute node immediately
         node = self._compute_node(self._corridors[camera_id])

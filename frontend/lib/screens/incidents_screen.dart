@@ -289,7 +289,7 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
-                    value: selectedUnit,
+                    initialValue: selectedUnit,
                     dropdownColor: AppColors.surfaceElevated,
                     style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                     decoration: InputDecoration(
@@ -365,29 +365,28 @@ class _IncidentsScreenState extends State<IncidentsScreen> {
                       if (ctx.mounted) {
                         Navigator.of(ctx).pop();
                       }
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: success
-                                ? AppColors.trafficNormal.withValues(alpha: 0.9)
-                                : AppColors.surfaceElevated,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            content: Row(
-                              children: [
-                                const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Dispatched $selectedUnit to ${incident.location}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                                  ),
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: success
+                              ? AppColors.trafficNormal.withValues(alpha: 0.9)
+                              : AppColors.surfaceElevated,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Dispatched $selectedUnit to ${incident.location}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 13),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        );
-                      }
+                        ),
+                      );
                     },
               icon: isDispatching
                   ? const SizedBox(

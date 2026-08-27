@@ -101,40 +101,41 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // 30-SECOND SHIFTING CONGESTION LIVE BANNER
+                // 30-SECOND ROLLING CONGESTION CYCLE BANNER
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bolt, color: AppColors.accent, size: 20),
+                      const Icon(Icons.sync_alt, color: AppColors.accent, size: 18),
                       const SizedBox(width: 10),
-                      Expanded(
+                      const Expanded(
                         child: Text(
-                          'Live ML Simulation: 30-second rolling congestion surge active. Peak load shifts across corridors automatically.',
-                          style: const TextStyle(
+                          'Dynamic Traffic Simulation: 30-second rolling peak surge active across arterial corridors.',
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.accent.withValues(alpha: 0.15),
+                          color: AppColors.accent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          '30s DEMO CYCLE',
+                          '30s LIVE CYCLE',
                           style: TextStyle(
                             color: AppColors.accent,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
