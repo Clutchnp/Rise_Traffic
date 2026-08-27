@@ -38,3 +38,23 @@ class CorridorThroughputModel(BaseModel):
     status: str
     congestion_level: str
     average_speed_kmh: float
+
+
+# --- NEW INSIGHTS GRAPH MODELS ---
+
+class TemporalFlowEntry(BaseModel):
+    time_label: str
+    avg_volume: int
+
+class HotspotEntry(BaseModel):
+    location_name: str
+    avg_volume: int
+
+class AccidentProneEntry(BaseModel):
+    location_name: str
+    accident_count: int
+
+class InsightsResponseModel(BaseModel):
+    temporal_flow_chart: List[TemporalFlowEntry]
+    top_hotspots_chart: List[HotspotEntry]
+    accident_prone_chart: List[AccidentProneEntry]
