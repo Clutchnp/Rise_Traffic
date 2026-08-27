@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend/models/traffic_model.dart';
+import '../models/insights_model.dart';
 
 class ApiService {
-  static const String defaultBaseUrl = 'http://127.0.0.1:8000';
+  static const String baseUrl = 'http://127.0.0.1:8000/api/v1';
   final String baseUrl;
 
   ApiService({this.baseUrl = defaultBaseUrl});
@@ -340,6 +341,15 @@ class ApiService {
     ];
   }
 }
+Future<InsightsResponse> fetchDatasetInsights() async {
+    final response = await http.get(Uri.parse('$baseUrl/analytics/insights'));
 
+    if (response.statusCode == 200) {
+      return InsightsResponse.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load insights from backend');
+    }
+  }
+}
 // Global shared instance
 final apiService = ApiService();
