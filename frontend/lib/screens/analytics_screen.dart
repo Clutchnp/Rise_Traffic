@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/app_theme.dart';
 import 'package:frontend/data/traffic_state.dart';
 import 'package:frontend/models/traffic_model.dart';
+import 'package:frontend/models/insights_model.dart'; // Added insights model import
 import 'package:frontend/services/api_service.dart';
 import 'package:frontend/widgets/congestion_chart.dart';
 import 'package:frontend/widgets/kpi_cards.dart';
@@ -21,6 +22,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     commercialFreight: 6,
   );
   List<CorridorThroughput> _throughputs = [];
+  
+  // State variable for the new insights data
+  InsightsResponse? _insightsData;
 
   @override
   void initState() {
@@ -31,10 +35,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Future<void> _loadAnalytics() async {
     final comp = await apiService.fetchVehicleComposition();
     final tp = await apiService.fetchCorridorThroughput();
+    
+    // Fetch the new dataset insights
+    InsightsResponse? insights;
+    try {
+      insights = await apiService.fetchDatasetInsights();
+    } catch (e) {
+      debugPrint("Failed to load insights: $e");
+    }
+
     if (mounted) {
       setState(() {
         _composition = comp;
         _throughputs = tp;
+        _insightsData = insights;
       });
     }
   }
@@ -155,6 +169,39 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     );
                   },
                 ),
+
+                const SizedBox(height: 20),
+
+                // NEW: DATASET HOTSPOT INSIGHTS
+                if (_insightsData != null)
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth >= 900) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 5, child: _TopHotspotsCard(hotspots: _insightsData!.topHotspotsChart)),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 5, child: _AccidentProneCard(accidents: _insightsData!.accidentProneChart)),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          _TopHotspotsCard(hotspots: _insightsData!.topHotspotsChart),
+                          const SizedBox(height: 16),
+                          _AccidentProneCard(accidents: _insightsData!.accidentProneChart),
+                        ],
+                      );
+                    },
+                  )
+                else
+                   const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -163,6 +210,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 }
+
+// ---------------------------------------------------------
+// EXISTING WIDGETS
+// ---------------------------------------------------------
 
 class _VehicleCompositionCard extends StatelessWidget {
   final VehicleComposition composition;
@@ -337,6 +388,122 @@ class _ThroughputRow extends StatelessWidget {
             ),
           ),
           Text(volume, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// NEW INSIGHTS WIDGETS
+// ---------------------------------------------------------
+
+class _TopHotspotsCard extends StatelessWidget {
+  final List<HotspotEntry> hotspots;
+
+  const _TopHotspotsCard({required this.hotspots});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Top Persistent Hotspots',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Highest average vehicle volume locations',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
+          const SizedBox(height: 18),
+          ...hotspots.map((hotspot) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    hotspot.locationName,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Text(
+                  '${hotspot.avgVolume} veh',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccidentProneCard extends StatelessWidget {
+  final List<AccidentProneEntry> accidents;
+
+  const _AccidentProneCard({required this.accidents});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Top Accident-Prone Zones',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Locations with the highest historical incident reports',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
+          const SizedBox(height: 18),
+          ...accidents.map((accident) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.car_crash, color: Colors.redAccent, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    accident.locationName,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Text(
+                  '${accident.accidentCount} cases',
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )),
         ],
       ),
     );
