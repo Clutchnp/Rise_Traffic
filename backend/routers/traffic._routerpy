@@ -7,6 +7,7 @@ from backend.models.traffic import (
     RawTelemetryEntry,
     IngestTelemetryRequest,
     CongestionLevel,
+    SwitchSignalRequest
 )
 from backend.services.sim_service import traffic_service
 
@@ -80,4 +81,3 @@ def switch_corridor_signal(camera_id: str, req: SwitchSignalRequest):
 def get_congestion_surge_info():
     """Returns the current actively congested corridor in the 30-second rolling demo cycle."""
     return traffic_service.get_surge_status()
-
