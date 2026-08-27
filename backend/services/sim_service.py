@@ -1,41 +1,3 @@
-import random
-from datetime import datetime
-from typing import List, Dict, Optional, Any
-from collections import deque
-
-from backend.config import DEFAULT_CORRIDORS, CONGESTION_THRESHOLDS
-from backend.models.traffic import (
-    CameraNodeModel,
-    CongestionLevel,
-    TrafficSummaryModel,
-    RawTelemetryEntry,
-    IngestTelemetryRequest,
-)
-
-
-def get_temporal_multiplier(hour: int, corridor_id: str) -> float:
-    """Computes realistic diurnal traffic flow multiplier."""
-    # Morning rush
-    if 8 <= hour <= 10:
-        base = 1.6
-    # Evening rush
-    elif 17 <= hour <= 21:
-        base = 1.75
-    # Midday
-    elif 11 <= hour <= 16:
-        base = 1.05
-    # Late night / early morning
-    elif 22 <= hour or hour <= 5:
-        base = 0.35
-    else:
-        base = 0.8
-
-    # Specific corridor factors
-    if corridor_id in ["CAM-001", "CAM-002", "CAM-007"]:
-        base *= 1.15
-    return base
-
-
 import time
 import random
 from datetime import datetime
@@ -56,25 +18,13 @@ from backend.traffic_processor import congestion_ml_engine
 
 # Corridors order for the 30-second rotating congestion surge demo
 SURGE_CYCLE_CORRIDORS = [
-    "CAM-001",  # Silk Board Junction
-    "CAM-002",  # Marathahalli Bridge
-    "CAM-004",  # Hebbal Flyover
-    "CAM-007",  # Whitefield ITPL Main Rd
-    "CAM-008",  # Electronic City Toll Plaza
-    "CAM-006",  # Indiranagar 100ft Rd
-    "CAM-003",  # Koramangala 80ft Rd
-    "CAM-005",  # MG Road Junction
+    "CAM-001", "CAM-002", "CAM-004", "CAM-007", 
+    "CAM-008", "CAM-006", "CAM-003", "CAM-005"
 ]
 
 SURGE_INTERVAL_SECONDS = 30.0
 
-
 class TrafficSimulationService:
-    """
-    Simulates a live multi-corridor traffic grid with a dynamic 30-second rotating
-    congestion surge and ML-driven score calculation, plus real-time signal phase switching.
-    """
-
     def __init__(self):
         self._corridors: Dict[str, Dict[str, Any]] = {
             c["camera_id"]: dict(c) for c in DEFAULT_CORRIDORS
@@ -82,7 +32,6 @@ class TrafficSimulationService:
         self._live_nodes: Dict[str, CameraNodeModel] = {}
         self._raw_logs: deque = deque(maxlen=100)
 
-        # Dynamic signal state per corridor
         self._signal_states: Dict[str, Dict[str, Any]] = {
             c["camera_id"]: {
                 "signal_phase": "NORTH_SOUTH_GREEN",
@@ -93,13 +42,10 @@ class TrafficSimulationService:
             }
             for c in DEFAULT_CORRIDORS
         }
-
-        # Simulation clock for 30s surge cycles
         self._start_time = time.time()
         self.update_all()
 
     def get_surge_status(self) -> Dict[str, Any]:
-        """Returns the current active 30s congestion surge junction and countdown."""
         elapsed = time.time() - self._start_time
         cycle_idx = int(elapsed // SURGE_INTERVAL_SECONDS) % len(SURGE_CYCLE_CORRIDORS)
         current_surge_id = SURGE_CYCLE_CORRIDORS[cycle_idx]
@@ -136,53 +82,38 @@ class TrafficSimulationService:
             },
         )
 
-        # Automatic Signal Switching logic in ADAPTIVE mode
         phase_elapsed = cur_time - signal_info.get("last_phase_switch", cur_time)
         green_duration = signal_info.get("green_time_sec", 45)
 
         if signal_info.get("signal_mode", "ADAPTIVE") == "ADAPTIVE":
             if phase_elapsed >= green_duration:
-                # Automatically alternate phase
                 current_phase = signal_info.get("signal_phase", "NORTH_SOUTH_GREEN")
                 new_phase = "EAST_WEST_GREEN" if current_phase == "NORTH_SOUTH_GREEN" else "NORTH_SOUTH_GREEN"
                 signal_info["signal_phase"] = new_phase
                 signal_info["last_phase_switch"] = cur_time
         elif signal_info.get("signal_mode") == "MANUAL":
-            # Return to ADAPTIVE mode once manual green duration completes
             if phase_elapsed >= green_duration:
                 signal_info["signal_mode"] = "ADAPTIVE"
                 signal_info["last_phase_switch"] = cur_time
 
         if not is_online:
             return CameraNodeModel(
-                id=cam_id,
-                name=corridor["name"],
-                latitude=corridor["latitude"],
-                longitude=corridor["longitude"],
-                is_online=False,
-                vehicle_count=0,
-                average_speed=0.0,
-                occupancy=0.0,
-                queue_length=0,
-                congestion_score=0.0,
-                congestion_level=CongestionLevel.NORMAL,
-                last_updated=now.strftime("%H:%M:%S"),
-                description=corridor.get("description", ""),
-                signal_phase=signal_info["signal_phase"],
-                green_time_sec=signal_info["green_time_sec"],
-                signal_mode=signal_info["signal_mode"],
+                id=cam_id, name=corridor["name"], latitude=corridor["latitude"],
+                longitude=corridor["longitude"], is_online=False, vehicle_count=0,
+                average_speed=0.0, occupancy=0.0, queue_length=0, congestion_score=0.0,
+                congestion_level=CongestionLevel.NORMAL, last_updated=now.strftime("%H:%M:%S"),
+                description=corridor.get("description", ""), signal_phase=signal_info["signal_phase"],
+                green_time_sec=signal_info["green_time_sec"], signal_mode=signal_info["signal_mode"],
                 is_surge_active=False,
             )
 
         surge_info = self.get_surge_status()
         is_surging = cam_id == surge_info["current_surge_id"]
 
-        # Decay manual clearance bonus gradually
         bonus = signal_info.get("manual_clearance_bonus", 0.0)
         if bonus > 0:
             signal_info["manual_clearance_bonus"] = max(0.0, bonus - 0.08)
 
-        # Influx logic: Surging junction experiences heavy volume surge
         if is_surging:
             surge_mult = random.uniform(1.65, 2.15)
             speed_penalty = random.uniform(28.0, 36.0)
@@ -192,23 +123,13 @@ class TrafficSimulationService:
             speed_penalty = random.uniform(4.0, 14.0)
             occ_boost = random.uniform(0.18, 0.45)
 
-        # Apply signal clearance relief if green phase or priority is active
         clearance_relief = (bonus * 0.3) + (0.1 if signal_info["signal_phase"] in ["NORTH_SOUTH_GREEN", "PRIORITY_CLEARANCE"] else 0.0)
 
-        vehicle_count = max(
-            8,
-            int(base_traffic * surge_mult * (1.0 - clearance_relief * 0.4) + random.gauss(0, 5)),
-        )
-        average_speed = round(
-            max(7.0, min(58.0, 48.0 - speed_penalty + (clearance_relief * 14.0) + random.uniform(-1.5, 1.5))),
-            1,
-        )
-        occupancy = round(
-            max(0.08, min(0.98, occ_boost - (clearance_relief * 0.25) + random.uniform(-0.02, 0.02))),
-            2,
-        )
+        vehicle_count = max(8, int(base_traffic * surge_mult * (1.0 - clearance_relief * 0.4) + random.gauss(0, 5)))
+        average_speed = round(max(7.0, min(58.0, 48.0 - speed_penalty + (clearance_relief * 14.0) + random.uniform(-1.5, 1.5))), 1)
+        occupancy = round(max(0.08, min(0.98, occ_boost - (clearance_relief * 0.25) + random.uniform(-0.02, 0.02))), 2)
 
-        # Run inference through ML Congestion Engine
+        # Run inference through new RF Pipeline ML Engine
         ml_result = congestion_ml_engine.predict_congestion(
             camera_id=cam_id,
             vehicle_count=vehicle_count,
@@ -221,7 +142,6 @@ class TrafficSimulationService:
         level_str = ml_result["congestion_level"]
         queue_len = ml_result["queue_length"]
 
-        # Map to enum
         if level_str == "critical":
             level = CongestionLevel.CRITICAL
         elif level_str == "high":
@@ -234,42 +154,28 @@ class TrafficSimulationService:
         formatted_time = now.strftime("%H:%M:%S")
 
         node = CameraNodeModel(
-            id=cam_id,
-            name=corridor["name"],
-            latitude=corridor["latitude"],
-            longitude=corridor["longitude"],
-            is_online=is_online,
-            vehicle_count=vehicle_count,
-            average_speed=average_speed,
-            occupancy=occupancy,
-            queue_length=queue_len,
-            congestion_score=score,
-            congestion_level=level,
-            last_updated=formatted_time,
-            description=corridor.get("description", ""),
-            signal_phase=signal_info["signal_phase"],
-            green_time_sec=signal_info["green_time_sec"],
-            signal_mode=signal_info["signal_mode"],
-            is_surge_active=is_surging,
+            id=cam_id, name=corridor["name"], latitude=corridor["latitude"],
+            longitude=corridor["longitude"], is_online=is_online,
+            vehicle_count=vehicle_count, average_speed=average_speed,
+            occupancy=occupancy, queue_length=queue_len,
+            congestion_score=score, congestion_level=level,
+            last_updated=formatted_time, description=corridor.get("description", ""),
+            signal_phase=signal_info["signal_phase"], green_time_sec=signal_info["green_time_sec"],
+            signal_mode=signal_info["signal_mode"], is_surge_active=is_surging,
         )
 
         self._raw_logs.appendleft(
             RawTelemetryEntry(
-                camera_id=node.id,
-                corridor_location=node.name,
-                vehicles=node.vehicle_count,
-                avg_speed=node.average_speed,
-                occupancy=node.occupancy,
-                queue=node.queue_length,
-                timestamp=node.last_updated,
-                status=node.congestion_level.value.upper(),
+                camera_id=node.id, corridor_location=node.name,
+                vehicles=node.vehicle_count, avg_speed=node.average_speed,
+                occupancy=node.occupancy, queue=node.queue_length,
+                timestamp=node.last_updated, status=node.congestion_level.value.upper(),
             )
         )
 
         return node
 
     def update_all(self) -> List[CameraNodeModel]:
-        """Executes simulation cycle tick across all corridors with current surge state."""
         nodes = []
         for cam_id, corridor in self._corridors.items():
             node = self._compute_node(corridor)
@@ -287,7 +193,6 @@ class TrafficSimulationService:
         return list(self._raw_logs)[:limit]
 
     def switch_signal(self, camera_id: str, req: SwitchSignalRequest) -> Optional[CameraNodeModel]:
-        """Manually switches the traffic signal phase and timer for a corridor."""
         if camera_id not in self._corridors:
             return None
 
@@ -304,10 +209,9 @@ class TrafficSimulationService:
         state["signal_phase"] = req.phase
         state["green_time_sec"] = req.green_duration_sec or 45
         state["signal_mode"] = req.mode or "MANUAL"
-        state["manual_clearance_bonus"] = 1.0  # Immediate queue clearance bonus
+        state["manual_clearance_bonus"] = 1.0 
         state["last_phase_switch"] = time.time()
 
-        # Recompute node immediately
         node = self._compute_node(self._corridors[camera_id])
         self._live_nodes[camera_id] = node
         return node
@@ -321,59 +225,44 @@ class TrafficSimulationService:
         lat = req.latitude or corridor_info.get("latitude", 12.9716)
         lon = req.longitude or corridor_info.get("longitude", 77.5946)
 
+        # Call with new optional variables
         ml_result = congestion_ml_engine.predict_congestion(
             camera_id=req.camera_id,
             vehicle_count=req.vehicle_count,
             average_speed=req.average_speed,
             occupancy=req.occupancy,
+            weather=req.weather,
+            roadwork=req.roadwork,
+            pedestrian_count=req.pedestrian_count
         )
 
         level_str = ml_result["congestion_level"]
         level = (
-            CongestionLevel.CRITICAL
-            if level_str == "critical"
-            else (
-                CongestionLevel.HIGH
-                if level_str == "high"
-                else (
-                    CongestionLevel.MODERATE
-                    if level_str == "moderate"
-                    else CongestionLevel.NORMAL
-                )
-            )
+            CongestionLevel.CRITICAL if level_str == "critical"
+            else (CongestionLevel.HIGH if level_str == "high"
+            else (CongestionLevel.MODERATE if level_str == "moderate"
+            else CongestionLevel.NORMAL))
         )
 
         node = CameraNodeModel(
-            id=req.camera_id,
-            name=name,
-            latitude=lat,
-            longitude=lon,
-            is_online=True,
-            vehicle_count=req.vehicle_count,
-            average_speed=req.average_speed,
-            occupancy=req.occupancy,
+            id=req.camera_id, name=name, latitude=lat, longitude=lon,
+            is_online=True, vehicle_count=req.vehicle_count,
+            average_speed=req.average_speed, occupancy=req.occupancy,
             queue_length=req.queue_length or ml_result["queue_length"],
             congestion_score=ml_result["congestion_score"],
-            congestion_level=level,
-            last_updated=formatted_time,
+            congestion_level=level, last_updated=formatted_time,
             description="Manually ingested telemetry reading",
-            signal_phase="NORTH_SOUTH_GREEN",
-            green_time_sec=45,
-            signal_mode="MANUAL",
-            is_surge_active=False,
+            signal_phase="NORTH_SOUTH_GREEN", green_time_sec=45,
+            signal_mode="MANUAL", is_surge_active=False,
         )
 
         self._live_nodes[req.camera_id] = node
         self._raw_logs.appendleft(
             RawTelemetryEntry(
-                camera_id=node.id,
-                corridor_location=node.name,
-                vehicles=node.vehicle_count,
-                avg_speed=node.average_speed,
-                occupancy=node.occupancy,
-                queue=node.queue_length,
-                timestamp=node.last_updated,
-                status=node.congestion_level.value.upper(),
+                camera_id=node.id, corridor_location=node.name,
+                vehicles=node.vehicle_count, avg_speed=node.average_speed,
+                occupancy=node.occupancy, queue=node.queue_length,
+                timestamp=node.last_updated, status=node.congestion_level.value.upper(),
             )
         )
         return node
@@ -383,10 +272,7 @@ class TrafficSimulationService:
         online_cams = [c for c in cameras if c.is_online]
         active_count = len(online_cams)
         total_vehicles = sum(c.vehicle_count for c in online_cams)
-        avg_speed = round(
-            sum(c.average_speed for c in online_cams) / active_count if active_count > 0 else 0.0,
-            1,
-        )
+        avg_speed = round(sum(c.average_speed for c in online_cams) / active_count if active_count > 0 else 0.0, 1)
 
         critical_count = sum(1 for c in online_cams if c.congestion_level == CongestionLevel.CRITICAL)
         high_count = sum(1 for c in online_cams if c.congestion_level == CongestionLevel.HIGH)
@@ -401,16 +287,11 @@ class TrafficSimulationService:
         surge_info = self.get_surge_status()
 
         return TrafficSummaryModel(
-            status="success",
-            active_corridors=active_count,
-            overall_status=overall,
-            average_speed=avg_speed,
-            total_vehicles=total_vehicles,
-            cameras=cameras,
+            status="success", active_corridors=active_count,
+            overall_status=overall, average_speed=avg_speed,
+            total_vehicles=total_vehicles, cameras=cameras,
             active_surge_corridor=surge_info["current_surge_name"],
             seconds_to_next_surge=surge_info["seconds_remaining"],
         )
 
-
 traffic_service = TrafficSimulationService()
-
