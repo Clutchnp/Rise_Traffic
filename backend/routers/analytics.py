@@ -6,6 +6,7 @@ from backend.models.analytics import (
     CongestionTrendPointModel,
     VehicleCompositionModel,
     CorridorThroughputModel,
+    InsightsResponseModel,
 )
 from backend.services.analytics_service import analytics_service
 
@@ -34,3 +35,9 @@ def get_vehicle_composition():
 def get_corridor_throughput():
     """Returns 24-hour volume throughput and capacity status across monitored arterial corridors."""
     return analytics_service.get_corridor_throughput()
+
+
+@router.get("/insights", response_model=InsightsResponseModel, summary="Get dataset graph insights")
+def get_dataset_insights():
+    """Returns aggregated temporal flow, hotspot rankings, and accident-prone zones from the core dataset."""
+    return analytics_service.get_graph_insights()
