@@ -1,0 +1,144 @@
+{
+    "temporal_flow_chart": [
+        {
+            "time_label": "00:00",
+            "avg_volume": 243
+        },
+        {
+            "time_label": "01:00",
+            "avg_volume": 182
+        },
+        {
+            "time_label": "02:00",
+            "avg_volume": 121
+        },
+        {
+            "time_label": "03:00",
+            "avg_volume": 121
+        },
+        {
+            "time_label": "04:00",
+            "avg_volume": 243
+        },
+        {
+            "time_label": "05:00",
+            "avg_volume": 609
+        },
+        {
+            "time_label": "06:00",
+            "avg_volume": 1461
+        },
+        {
+            "time_label": "07:00",
+            "avg_volume": 2436
+        },
+        {
+            "time_label": "08:00",
+            "avg_volume": 2801
+        },
+        {
+            "time_label": "09:00",
+            "avg_volume": 2192
+        },
+        {
+            "time_label": "10:00",
+            "avg_volume": 1583
+        },
+        {
+            "time_label": "11:00",
+            "avg_volume": 1461
+        },
+        {
+            "time_label": "12:00",
+            "avg_volume": 1339
+        },
+        {
+            "time_label": "13:00",
+            "avg_volume": 1339
+        },
+        {
+            "time_label": "14:00",
+            "avg_volume": 1461
+        },
+        {
+            "time_label": "15:00",
+            "avg_volume": 1705
+        },
+        {
+            "time_label": "16:00",
+            "avg_volume": 2314
+        },
+        {
+            "time_label": "17:00",
+            "avg_volume": 3045
+        },
+        {
+            "time_label": "18:00",
+            "avg_volume": 2923
+        },
+        {
+            "time_label": "19:00",
+            "avg_volume": 2192
+        },
+        {
+            "time_label": "20:00",
+            "avg_volume": 1583
+        },
+        {
+            "time_label": "21:00",
+            "avg_volume": 974
+        },
+        {
+            "time_label": "22:00",
+            "avg_volume": 609
+        },
+        {
+            "time_label": "23:00",
+            "avg_volume": 365
+        }
+    ],
+    "top_hotspots_chart": [
+        {
+            "location_name": "Koramangala - Sony World Junction",
+            "avg_volume": 41470
+        },
+        {
+            "location_name": "Koramangala - Sarjapur Road",
+            "avg_volume": 40189
+        },
+        {
+            "location_name": "M.G. Road - Trinity Circle",
+            "avg_volume": 35350
+        },
+        {
+            "location_name": "M.G. Road - Anil Kumble Circle",
+            "avg_volume": 35251
+        },
+        {
+            "location_name": "Indiranagar - CMH Road",
+            "avg_volume": 32611
+        }
+    ],
+    "accident_prone_chart": [
+        {
+            "location_name": "Indiranagar - 100 Feet Road",
+            "accident_count": 1551
+        },
+        {
+            "location_name": "Indiranagar - CMH Road",
+            "accident_count": 1506
+        },
+        {
+            "location_name": "M.G. Road - Trinity Circle",
+            "accident_count": 1424
+        },
+        {
+            "location_name": "M.G. Road - Anil Kumble Circle",
+            "accident_count": 1375
+        },
+        {
+            "location_name": "Koramangala - Sarjapur Road",
+            "accident_count": 1280
+        }
+    ]
+}
