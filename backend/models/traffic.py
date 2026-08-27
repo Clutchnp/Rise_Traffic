@@ -67,3 +67,8 @@ class IngestTelemetryRequest(BaseModel):
     average_speed: float
     occupancy: float
     queue_length: Optional[int] = None
+    
+    # New optional fields to support the RandomForest model features
+    weather: Optional[str] = Field("Clear", description="Weather Conditions")
+    roadwork: Optional[str] = Field("No", description="Roadwork and Construction Activity")
+    pedestrian_count: Optional[int] = Field(15, description="Pedestrian and Cyclist Count")
